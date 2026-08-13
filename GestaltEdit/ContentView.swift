@@ -39,6 +39,11 @@ struct ContentView: View {
 }
 
 private struct UnsupportedOSView: View {
+    private var detectedBuild: String {
+        let build = GestaltAccess.currentOSBuild()
+        return build.isEmpty ? String(localized: "Unknown") : build
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "iphone.slash")
@@ -48,6 +53,9 @@ private struct UnsupportedOSView: View {
                 .font(.title2.weight(.semibold))
             Text("GestaltEdit currently supports only iOS 27 beta 1 through beta 4.")
                 .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+            Text("Detected build: \(detectedBuild)")
+                .font(.footnote.monospaced())
                 .foregroundStyle(.secondary)
         }
         .padding(24)

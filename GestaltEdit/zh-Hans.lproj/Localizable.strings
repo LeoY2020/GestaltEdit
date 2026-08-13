@@ -18,6 +18,9 @@
 "Unable to read MobileGestalt" = "无法读取 MobileGestalt";
 "Unsupported iOS Version" = "不支持的 iOS 版本";
 "GestaltEdit currently supports only iOS 27 beta 1 through beta 4." = "GestaltEdit 目前仅支持 iOS 27 beta 1 至 beta 4。";
+"GestaltEdit currently supports only iOS 27 beta 1 through beta 4. Detected build: %@." = "GestaltEdit 目前仅支持 iOS 27 beta 1 至 beta 4。检测到的构建版本：%@。";
+"Detected build: %@" = "检测到的构建版本：%@";
+"Unknown" = "未知";
 "Reload" = "重新读取";
 "Connected" = "已连接";
 "Current Device" = "当前设备";

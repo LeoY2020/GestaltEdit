@@ -105,8 +105,13 @@ static BOOL GestaltWriteAll(int fd, NSData *data)
 - (BOOL)connectWithError:(NSError **)error
 {
     if (!GestaltAccess.isRunningSupportedOS) {
-        if (error) *error = GestaltError(0, NSLocalizedString(
-            @"GestaltEdit currently supports only iOS 27 beta 1 through beta 4.", nil));
+        if (error) {
+            NSString *build = GestaltAccess.currentOSBuild;
+            NSString *format = NSLocalizedString(
+                @"GestaltEdit currently supports only iOS 27 beta 1 through beta 4. Detected build: %@.", nil);
+            *error = GestaltError(0, [NSString stringWithFormat:format,
+                build.length > 0 ? build : NSLocalizedString(@"Unknown", nil)]);
+        }
         return NO;
     }
 
