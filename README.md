@@ -39,7 +39,7 @@ Importing only copies a file into GestaltEdit's backup library; it does not imme
 
 ## Requirements and signing
 
-- Supported system versions: iOS and visionOS 27 beta 1 through beta 4 only
+- Supported system versions: iOS/iPadOS and visionOS 27 beta 1 through beta 4 only
 - Xcode and a signing method that can install apps on the target device
 - Developer Mode enabled on the device
 - Bundle identifier: `me.ssus.gestaltedit`
