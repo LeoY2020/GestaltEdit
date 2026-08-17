@@ -144,22 +144,24 @@ final class GestaltViewModel: ObservableObject {
                 try pending.setModelName(name)
             }
             var expectedConfiguration: AIRegionConfiguration?
-            if stagesAIRegion {
+            if stagesAIRegion && !appliedAIRegion {
+                // First-time enable: snapshot the device's original region
+                // values to the Keychain before overwriting them, so a later
+                // toggle-off can restore them exactly — even if GestaltEdit
+                // has been uninstalled and reinstalled in between.
+                try AIRegionBackupStore.save(from: pending)
                 let configuration = AIRegionConfiguration.resolve(for: pending)
-                let profile = configuration.profile
-                if let productType = configuration.spoofedProductType,
-                   let hardwareModel = configuration.spoofedHardwareModel,
-                   let cpuModel = configuration.spoofedCPUModel {
-                    pending.setCacheExtra(1, forKey: "A62OafQ85EJAiiqKn4agtg")
-                    pending.setCacheExtra(productType, forKey: "h9jDsbgj7xIVeIQ8S3/X3Q")
-                    pending.setCacheExtra(hardwareModel, forKey: "oYicEKzVTz4/CxxE05pEgQ")
-                    pending.setCacheExtra(cpuModel, forKey: "5pYKlGnYYBzGvAlIU8RjEQ")
-                }
-                pending.setCacheExtra("LL", forKey: "h63QSdBCiT/z0WU6rdQv6Q")
-                pending.setCacheExtra("LL/A", forKey: "yK+xavymRGZ3xWc1tb8XDg")
-                pending.setCacheExtra(profile.regulatoryModel, forKey: "97JDvERpVwO+GHtthIh7hA")
+                applyAIRegion(into: &pending, configuration: configuration)
                 expectedConfiguration = configuration
+            } else if !stagesAIRegion && appliedAIRegion {
+                // Turning off: restore the original values that were backed
+                // up when AI was enabled, then drop the Keychain entry so a
+                // subsequent enable starts from a fresh snapshot.
+                try AIRegionBackupStore.restore(into: &pending)
+                AIRegionBackupStore.clear()
             }
+            // When stagesAIRegion == appliedAIRegion the user did not flip
+            // the AI toggle, so the AI keys are left untouched.
             save(pending, expectedAIRegion: expectedConfiguration) { [weak self] in
                 self?.syncStateFromPlist()
             }
@@ -171,6 +173,23 @@ final class GestaltViewModel: ObservableObject {
     func applyChanges() {
         guard !isBusy, let plist else { return }
         save(plist, expectedAIRegion: nil)
+    }
+
+    /// Writes the US-region AI capability values into `pending`. Split out
+    /// from ``applySelectedTweaks`` so the enable path stays readable.
+    private func applyAIRegion(into pending: inout GestaltPlist, configuration: AIRegionConfiguration) {
+        let profile = configuration.profile
+        if let productType = configuration.spoofedProductType,
+           let hardwareModel = configuration.spoofedHardwareModel,
+           let cpuModel = configuration.spoofedCPUModel {
+            pending.setCacheExtra(1, forKey: "A62OafQ85EJAiiqKn4agtg")
+            pending.setCacheExtra(productType, forKey: "h9jDsbgj7xIVeIQ8S3/X3Q")
+            pending.setCacheExtra(hardwareModel, forKey: "oYicEKzVTz4/CxxE05pEgQ")
+            pending.setCacheExtra(cpuModel, forKey: "5pYKlGnYYBzGvAlIU8RjEQ")
+        }
+        pending.setCacheExtra("LL", forKey: "h63QSdBCiT/z0WU6rdQv6Q")
+        pending.setCacheExtra("LL/A", forKey: "yK+xavymRGZ3xWc1tb8XDg")
+        pending.setCacheExtra(profile.regulatoryModel, forKey: "97JDvERpVwO+GHtthIh7hA")
     }
 
     func createBackup() {
