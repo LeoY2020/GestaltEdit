@@ -1,0 +1,65 @@
+name: Build (branch)
+
+on:
+  push:
+    branches-ignore: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: build-branch-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build unsigned IPA (Xcode 27)
+    runs-on: xcode-27
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 27
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Show versions
+        run: |
+          xcodebuild -version
+          xcrun --find xcodebuild
+          xcodebuild -showsdks | grep -E 'iphoneos'
+
+      - name: Build app (unsigned)
+        run: |
+          xcodebuild \
+            -project GestaltEdit.xcodeproj \
+            -scheme GestaltEdit \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            DEVELOPMENT_TEAM="" \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          APP="build/Build/Products/Release-iphoneos/GestaltEdit.app"
+          test -d "$APP" || { echo "App bundle not found at $APP"; exit 1; }
+          rm -rf Payload GestaltEdit-unsigned.ipa
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry GestaltEdit-unsigned.ipa Payload
+          echo "## sha256" ; shasum -a 256 GestaltEdit-unsigned.ipa
+          ls -lh GestaltEdit-unsigned.ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GestaltEdit-unsigned-ipa-branch
+          path: GestaltEdit-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
