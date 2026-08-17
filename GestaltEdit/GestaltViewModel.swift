@@ -16,6 +16,12 @@ final class GestaltViewModel: ObservableObject {
     @Published var stagesAIRegion = false
     @Published private(set) var isRespringing = false
 
+    /// Snapshot of which tweaks / AI region were already active in the plist
+    /// at load time. Used so that ``hasStagedTweaks`` only reports genuine
+    /// new changes rather than re-counting already-applied values.
+    private var appliedTweaks: Set<GestaltTweakID> = []
+    private var appliedAIRegion = false
+
     private let access = GestaltAccess.shared()
 
     var aiRegionProfile: AIRegionProfile? {
@@ -35,17 +41,17 @@ final class GestaltViewModel: ObservableObject {
     }
 
     var hasStagedTweaks: Bool {
-        !selectedTweaks.isEmpty
+        !selectedTweaks.subtracting(appliedTweaks).isEmpty
             || dynamicIslandSubtype != nil
             || (changesModelName && !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            || stagesAIRegion
+            || (stagesAIRegion && !appliedAIRegion)
     }
 
     var stagedChangeCount: Int {
-        selectedTweaks.count
+        selectedTweaks.subtracting(appliedTweaks).count
             + (dynamicIslandSubtype == nil ? 0 : 1)
             + (changesModelName ? 1 : 0)
-            + (stagesAIRegion ? 1 : 0)
+            + (stagesAIRegion && !appliedAIRegion ? 1 : 0)
     }
 
     func load() {
@@ -62,11 +68,39 @@ final class GestaltViewModel: ObservableObject {
             }
             plist = GestaltPlist(dict: dictionary)
             isDirty = false
+            if !hasStagedTweaks {
+                syncStateFromPlist()
+            }
             refreshBackups()
         } catch {
             plist = nil
             report(error)
         }
+    }
+
+    /// Reads the current plist and populates every toggle / picker so that
+    /// the UI reflects the device's actual MobileGestalt state instead of
+    /// always starting from an empty baseline.
+    private func syncStateFromPlist() {
+        guard let plist else { return }
+
+        let applied = Set(
+            GestaltTweakCatalog.definitions
+                .filter { plist.isTweakApplied($0) }
+                .map { $0.id }
+        )
+        selectedTweaks = applied
+        appliedTweaks = applied
+
+        stagesAIRegion = isAIRegionConfigured
+        appliedAIRegion = stagesAIRegion
+
+        if let artwork = plist.cacheExtra["oPeik/9e8lQWMszEjbPzng"] as? [String: Any],
+           let name = artwork["ArtworkDeviceProductDescription"] as? String {
+            modelName = name
+        }
+        changesModelName = false
+        dynamicIslandSubtype = nil
     }
 
     func setTweak(_ id: GestaltTweakID, enabled: Bool) {
@@ -125,11 +159,7 @@ final class GestaltViewModel: ObservableObject {
                 expectedConfiguration = configuration
             }
             save(pending, expectedAIRegion: expectedConfiguration) { [weak self] in
-                self?.selectedTweaks.removeAll()
-                self?.dynamicIslandSubtype = nil
-                self?.changesModelName = false
-                self?.modelName = ""
-                self?.stagesAIRegion = false
+                self?.syncStateFromPlist()
             }
         } catch {
             report(error)
