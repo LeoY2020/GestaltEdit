@@ -41,17 +41,19 @@ final class GestaltViewModel: ObservableObject {
     }
 
     var hasStagedTweaks: Bool {
-        !selectedTweaks.subtracting(appliedTweaks).isEmpty
+        // Symmetric difference so that turning OFF an already-applied tweak
+        // also counts as a staged change, not just turning one on.
+        !selectedTweaks.symmetricDifference(appliedTweaks).isEmpty
             || dynamicIslandSubtype != nil
             || (changesModelName && !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            || (stagesAIRegion && !appliedAIRegion)
+            || (stagesAIRegion != appliedAIRegion)
     }
 
     var stagedChangeCount: Int {
-        selectedTweaks.subtracting(appliedTweaks).count
+        selectedTweaks.symmetricDifference(appliedTweaks).count
             + (dynamicIslandSubtype == nil ? 0 : 1)
             + (changesModelName ? 1 : 0)
-            + (stagesAIRegion && !appliedAIRegion ? 1 : 0)
+            + (stagesAIRegion != appliedAIRegion ? 1 : 0)
     }
 
     func load() {
