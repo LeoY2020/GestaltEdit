@@ -19,7 +19,7 @@ import Security
 ///   device returns to the "AI unconfigured" state instead of keeping a
 ///   half-applied spoof.
 enum AIRegionBackupStore {
-    private static let service = "com.LeoY2020.GestaltEdit.aiRegionBackup"
+    private static let service = "me.ssus.gestaltedit.aiRegionBackup"
     private static let account = "originalRegionValues"
 
     /// All CacheExtra keys that the AI-region toggle may overwrite.
