@@ -177,19 +177,32 @@ final class GestaltViewModel: ObservableObject {
 
     /// Writes the US-region AI capability values into `pending`. Split out
     /// from ``applySelectedTweaks`` so the enable path stays readable.
+    /// Every key written here must be listed in
+    /// ``AIRegionBackupStore/affectedKeys`` for the backup/restore cycle
+    /// to stay reversible; the assertion fails fast in debug builds if
+    /// the two lists ever drift apart.
     private func applyAIRegion(into pending: inout GestaltPlist, configuration: AIRegionConfiguration) {
         let profile = configuration.profile
+        var values: [String: Any] = [
+            "h63QSdBCiT/z0WU6rdQv6Q": "LL",
+            "yK+xavymRGZ3xWc1tb8XDg": "LL/A",
+            "97JDvERpVwO+GHtthIh7hA": profile.regulatoryModel
+        ]
         if let productType = configuration.spoofedProductType,
            let hardwareModel = configuration.spoofedHardwareModel,
            let cpuModel = configuration.spoofedCPUModel {
-            pending.setCacheExtra(1, forKey: "A62OafQ85EJAiiqKn4agtg")
-            pending.setCacheExtra(productType, forKey: "h9jDsbgj7xIVeIQ8S3/X3Q")
-            pending.setCacheExtra(hardwareModel, forKey: "oYicEKzVTz4/CxxE05pEgQ")
-            pending.setCacheExtra(cpuModel, forKey: "5pYKlGnYYBzGvAlIU8RjEQ")
+            values["A62OafQ85EJAiiqKn4agtg"] = 1
+            values["h9jDsbgj7xIVeIQ8S3/X3Q"] = productType
+            values["oYicEKzVTz4/CxxE05pEgQ"] = hardwareModel
+            values["5pYKlGnYYBzGvAlIU8RjEQ"] = cpuModel
         }
-        pending.setCacheExtra("LL", forKey: "h63QSdBCiT/z0WU6rdQv6Q")
-        pending.setCacheExtra("LL/A", forKey: "yK+xavymRGZ3xWc1tb8XDg")
-        pending.setCacheExtra(profile.regulatoryModel, forKey: "97JDvERpVwO+GHtthIh7hA")
+        assert(
+            values.keys.allSatisfy { AIRegionBackupStore.affectedKeys.contains($0) },
+            "applyAIRegion writes keys that AIRegionBackupStore does not back up"
+        )
+        for (key, value) in values {
+            pending.setCacheExtra(value, forKey: key)
+        }
     }
 
     func createBackup() {
